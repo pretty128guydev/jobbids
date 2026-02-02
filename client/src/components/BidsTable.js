@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Select, MenuItem, TableFooter, TablePagination, IconButton, Dialog, Snackbar, Alert, Chip, LinearProgress } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Select, MenuItem, TableFooter, TablePagination, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Chip, LinearProgress } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../api';
@@ -15,6 +15,13 @@ export default function BidsTable() {
   const [openForm, setOpenForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+  const [descOpen, setDescOpen] = useState(false);
+  const [descText, setDescText] = useState('');
+
+  function openDesc(text) {
+    setDescText(text || '');
+    setDescOpen(true);
+  }
 
   async function fetchData(p = page, l = limit) {
     const params = { page: p + 1, limit: l, ...filters };
@@ -58,12 +65,20 @@ export default function BidsTable() {
         <TextField label="Job Title" size="small" value={filters.job_title||''} onChange={(e)=>setFilters({...filters, job_title: e.target.value})} />
         <Select value={filters.status} displayEmpty onChange={(e)=>setFilters({...filters, status: e.target.value})} size="small">
           <MenuItem value="">All Status</MenuItem>
-          <MenuItem value="Applied">Applied</MenuItem>
-          <MenuItem value="Interview">Interview</MenuItem>
-          <MenuItem value="Offer">Offer</MenuItem>
-          <MenuItem value="Rejected">Rejected</MenuItem>
+          <MenuItem value="applied">Applied</MenuItem>
+          <MenuItem value="refused">Refused</MenuItem>
+          <MenuItem value="chatting">Chatting</MenuItem>
+          <MenuItem value="test task">Test Task</MenuItem>
+          <MenuItem value="fill the form">Fill The Form</MenuItem>
         </Select>
-        <TextField label="Interview Status" size="small" value={filters.interview_status} onChange={(e)=>setFilters({...filters, interview_status: e.target.value})} />
+        <Select value={filters.interview_status} displayEmpty onChange={(e)=>setFilters({...filters, interview_status: e.target.value})} size="small">
+          <MenuItem value="">All Interview Status</MenuItem>
+          <MenuItem value="recruiter">recruiter</MenuItem>
+          <MenuItem value="tech">tech</MenuItem>
+          <MenuItem value="tech(live coding)">tech(live coding)</MenuItem>
+          <MenuItem value="tech 2">tech 2</MenuItem>
+          <MenuItem value="final">final</MenuItem>
+        </Select>
         <div style={{ marginLeft: 'auto' }}>
           <Button variant="contained" onClick={()=>{setEditing(null); setOpenForm(true);}}>Add Bid</Button>
         </div>
@@ -81,6 +96,7 @@ export default function BidsTable() {
               <TableCell>Bidded Date</TableCell>
               <TableCell>Interview Status</TableCell>
               <TableCell>Interview Scheduled</TableCell>
+              <TableCell>Description</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -105,23 +121,48 @@ export default function BidsTable() {
                   ) : ('')}
                 </TableCell>
                 <TableCell>
-                  <Chip label={row.status} size="small" color={(() => {
-                    switch((row.status||'').toLowerCase()){
-                      case 'applied': return 'info';
-                      case 'interview': return 'warning';
-                      case 'offer': return 'success';
-                      case 'rejected': return 'error';
-                      default: return 'default';
-                    }
-                  })()} />
+                  {(() => {
+                    const s = (row.status || 'applied').toLowerCase();
+                    const label = s.split(' ').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
+                    const colorMap = {
+                      'applied': '#1976d2',
+                      'refused': '#d32f2f',
+                      'chatting': '#0288d1',
+                      'test task': '#fbc02d',
+                      'fill the form': '#7b1fa2'
+                    };
+                    const bg = colorMap[s] || '#455a64';
+                    return (
+                      <Chip label={label} size="medium" sx={{ bgcolor: bg, color: '#fff', fontWeight: 700 }} />
+                    );
+                  })()}
                 </TableCell>
                 <TableCell><span className="muted">{row.bidded_date ? new Date(row.bidded_date).toLocaleString() : ''}</span></TableCell>
                 <TableCell>
-                  {row.interview_status ? (
-                    <Chip label={row.interview_status} size="small" variant="outlined" color="secondary" />
-                  ) : ('')}
+                  {(() => {
+                    const iv = (row.interview_status || 'none').toLowerCase();
+                    const interviewMap = {
+                      'none': '#616161',
+                      'recruiter': '#2e7d32',
+                      'tech': '#f9a825',
+                      'tech 2': '#f9a825',
+                      'tech(live coding)': '#7e57c2',
+                      'final': '#d81b60'
+                    };
+                    const ibg = interviewMap[iv] || '#616161';
+                    if (iv === 'none') return (<span className="muted">None</span>);
+                    return (<Chip label={iv} size="small" sx={{ bgcolor: ibg, color: '#fff', fontWeight: 600 }} />);
+                  })()}
                 </TableCell>
                 <TableCell>{row.interview_scheduled ? new Date(row.interview_scheduled).toLocaleString() : ''}</TableCell>
+                <TableCell>
+                  {row.description ? (
+                    <>
+                      <span style={{ cursor: 'pointer' }} onClick={()=>openDesc(row.description)} title="Click to view full description">{row.description.length > 20 ? row.description.slice(0,20) + '...' : row.description}</span>
+                      {row.description.length > 20 && <Button size="small" onClick={()=>openDesc(row.description)} style={{ marginLeft: 8 }}>View</Button>}
+                    </>
+                  ) : ('')}
+                </TableCell>
                 <TableCell>
                   <IconButton size="small" onClick={()=>{setEditing(row); setOpenForm(true);}}><EditIcon/></IconButton>
                   <IconButton size="small" onClick={()=>handleDelete(row.id)}><DeleteIcon/></IconButton>
@@ -150,6 +191,16 @@ export default function BidsTable() {
           initial={editing}
           onClose={(res)=>{ setOpenForm(false); fetchData(); if (res?.successMessage) setSuccess(res.successMessage); }}
         />
+      </Dialog>
+
+      <Dialog open={descOpen} onClose={()=>setDescOpen(false)} scroll="paper" maxWidth="sm" fullWidth>
+        <DialogTitle>Description</DialogTitle>
+        <DialogContent dividers sx={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{descText}</div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={()=>setDescOpen(false)}>Close</Button>
+        </DialogActions>
       </Dialog>
       <Snackbar anchorOrigin={{ vertical: 'top', horizontal: 'right' }} open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
         <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>{error}</Alert>
