@@ -18,12 +18,15 @@ const allowedOrigins = [
 
 app.use(cors({ 
 	origin: (origin, callback) => {
-		// Allow requests with no origin (like mobile apps or curl)
-		if (!origin || allowedOrigins.includes(origin)) {
-			callback(null, true);
-		} else {
-			callback(new Error('CORS not allowed'));
+		// Allow requests with no origin (like curl or native apps)
+		if (!origin) return callback(null, true);
+
+		// Allow explicit origins or any Netlify subdomain
+		if (allowedOrigins.includes(origin) || origin.endsWith('.netlify.app')) {
+			return callback(null, true);
 		}
+
+		return callback(new Error('CORS not allowed'));
 	},
 	credentials: true 
 }));
@@ -37,11 +40,12 @@ app.use(
 		resave: false,
 		saveUninitialized: false,
 		cookie: { 
+			// For cross-site requests from Netlify -> Render we need SameSite=None and secure
 			secure: process.env.NODE_ENV === 'production',
 			httpOnly: true, 
-			sameSite: 'lax', 
+			sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', 
 			maxAge: 24 * 60 * 60 * 1000,
-			domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+			domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? undefined : undefined)
 		}
 	})
 );
@@ -51,6 +55,8 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 // auth routes
 const authRouter = require('./routes/auth');
 app.use('/api/auth', authRouter);
+// also support legacy /auth path in case frontend calls that directly
+app.use('/auth', authRouter);
 
 // protect API routes
 function requireAuth(req, res, next) {
