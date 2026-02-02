@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Select, MenuItem, TableFooter, TablePagination, IconButton, Dialog } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Select, MenuItem, TableFooter, TablePagination, IconButton, Dialog, Snackbar, Alert, Chip } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../api';
@@ -16,18 +16,31 @@ export default function BidsTable() {
 
   async function fetchData(p = page, l = limit) {
     const params = { page: p + 1, limit: l, ...filters };
-    const res = await api.get('/bids', { params });
-    setData(res.data.data);
-    setTotal(res.data.total);
+    try {
+      const res = await api.get('/bids', { params });
+      setData(res.data.data);
+      setTotal(res.data.total);
+    } catch (err) {
+      const msg = err?.response?.data?.error || err.message || 'Failed to load bids';
+      setError(msg);
+    }
   }
 
   useEffect(() => { fetchData(0, limit); setPage(0); }, [filters, limit]);
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this bid?')) return;
-    await api.delete(`/bids/${id}`);
-    fetchData();
+    try {
+      await api.delete(`/bids/${id}`);
+      fetchData();
+    } catch (err) {
+      const msg = err?.response?.data?.error || err.message || 'Delete failed';
+      setError(msg);
+    }
   };
+
+  const [error, setError] = useState('');
+  const handleCloseError = () => setError('');
 
   return (
     <>
@@ -55,8 +68,8 @@ export default function BidsTable() {
               <TableCell>Job Title</TableCell>
               <TableCell>JD Link</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Interview Status</TableCell>
               <TableCell>Bidded Date</TableCell>
+              <TableCell>Interview Status</TableCell>
               <TableCell>Interview Scheduled</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -64,16 +77,40 @@ export default function BidsTable() {
           <TableBody>
             {data.map(row => (
               <TableRow key={row.id}>
-                <TableCell>{row.company_name}</TableCell>
+                <TableCell><strong>{row.company_name}</strong></TableCell>
                 <TableCell>{row.job_title}</TableCell>
-                <TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>
                   {row.jd_link ? (
-                    <a href={row.jd_link} target="_blank" rel="noreferrer">Link</a>
+                    <Chip
+                      component="a"
+                      href={row.jd_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      label="JD"
+                      clickable
+                      size="small"
+                      color="info"
+                      variant="outlined"
+                    />
                   ) : ('')}
                 </TableCell>
-                <TableCell>{row.status}</TableCell>
-                <TableCell>{row.interview_status}</TableCell>
-                <TableCell>{row.bidded_date ? new Date(row.bidded_date).toLocaleString() : ''}</TableCell>
+                <TableCell>
+                  <Chip label={row.status} size="small" color={(() => {
+                    switch((row.status||'').toLowerCase()){
+                      case 'applied': return 'info';
+                      case 'interview': return 'warning';
+                      case 'offer': return 'success';
+                      case 'rejected': return 'error';
+                      default: return 'default';
+                    }
+                  })()} />
+                </TableCell>
+                <TableCell><span className="muted">{row.bidded_date ? new Date(row.bidded_date).toLocaleString() : ''}</span></TableCell>
+                <TableCell>
+                  {row.interview_status ? (
+                    <Chip label={row.interview_status} size="small" variant="outlined" color="secondary" />
+                  ) : ('')}
+                </TableCell>
                 <TableCell>{row.interview_scheduled ? new Date(row.interview_scheduled).toLocaleString() : ''}</TableCell>
                 <TableCell>
                   <IconButton size="small" onClick={()=>{setEditing(row); setOpenForm(true);}}><EditIcon/></IconButton>
@@ -104,6 +141,9 @@ export default function BidsTable() {
           onClose={()=>{ setOpenForm(false); fetchData(); }}
         />
       </Dialog>
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>{error}</Alert>
+      </Snackbar>
     </>
   );
 }

@@ -1,3 +1,13 @@
 body { font-family: Roboto, Arial, sans-serif; }
 /* small helper styles */
 .MuiTableCell-root { vertical-align: middle; }
+.app-header { margin-bottom: 12px; }
+.summary-card { min-height: 72px; }
+.table-actions { display: flex; gap: 8px; align-items: center; }
+
+a { color: #90caf9; }
+.MuiPaper-root { background-image: none; }
+
+.muted { color: rgba(255,255,255,0.65); }
+.MuiChip-root { font-weight: 600; }
+.MuiChip-sizeSmall { height: 28px; }

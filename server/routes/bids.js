@@ -5,7 +5,8 @@ const db = require('../db');
 // Helpers
 async function query(sql, params) {
   const pool = db.getPool();
-  const [rows] = await pool.execute(sql, params);
+  const p = params || [];
+  const [rows] = await pool.execute(sql, p);
   return rows;
 }
 
@@ -26,9 +27,13 @@ router.get('/', async (req, res) => {
     const totalRows = await query(`SELECT COUNT(*) as cnt FROM bids ${whereSql}`, params);
     const total = totalRows[0].cnt;
 
+    // Some MySQL servers have issues with parameterized LIMIT/OFFSET.
+    // Validate and interpolate numeric values directly to avoid ER_WRONG_ARGUMENTS.
+    const lim = Math.max(1, Math.min(1000, parseInt(limit, 10) || 10));
+    const off = Math.max(0, parseInt(offset, 10) || 0);
     const rows = await query(
-      `SELECT * FROM bids ${whereSql} ORDER BY bidded_date DESC LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), parseInt(offset)]
+      `SELECT * FROM bids ${whereSql} ORDER BY bidded_date DESC LIMIT ${lim} OFFSET ${off}`,
+      params
     );
 
     res.json({ data: rows, total, page: parseInt(page), limit: parseInt(limit) });
@@ -63,6 +68,7 @@ router.post('/', async (req, res) => {
     const { company_name, job_title, jd_link = '', status = 'Applied', interview_status = '', interview_scheduled = null } = req.body;
     if (!company_name || !job_title) return res.status(400).json({ error: 'company_name and job_title required' });
 
+    const pool = db.getPool();
     const [result] = await pool.execute(
       `INSERT INTO bids (company_name, job_title, jd_link, status, interview_status, bidded_date, interview_scheduled)
        VALUES (?, ?, ?, ?, ?, NOW(), ?)`,

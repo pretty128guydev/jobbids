@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
+import { DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Snackbar, Alert } from '@mui/material';
 import api from '../api';
 
 export default function BidForm({ initial, onClose }) {
@@ -12,13 +12,21 @@ export default function BidForm({ initial, onClose }) {
   const handleSubmit = async () => {
     const payload = { ...form };
     if (form.interview_scheduled === '') payload.interview_scheduled = null;
-    if (initial) {
-      await api.put(`/bids/${initial.id}`, payload);
-    } else {
-      await api.post('/bids', payload);
+    try {
+      if (initial) {
+        await api.put(`/bids/${initial.id}`, payload);
+      } else {
+        await api.post('/bids', payload);
+      }
+      onClose();
+    } catch (err) {
+      const msg = err?.response?.data?.error || err.message || 'Server error';
+      setError(msg);
     }
-    onClose();
   };
+
+  const [error, setError] = useState('');
+  const handleCloseError = () => setError('');
 
   return (
     <>
@@ -40,6 +48,9 @@ export default function BidForm({ initial, onClose }) {
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" onClick={handleSubmit}>{initial ? 'Save' : 'Add'}</Button>
       </DialogActions>
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>{error}</Alert>
+      </Snackbar>
     </>
   );
 }
