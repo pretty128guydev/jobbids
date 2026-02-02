@@ -161,12 +161,13 @@ router.get('/summary/timeseries', async (req, res) => {
     const period = (req.query.period || 'day').toLowerCase();
     const status = req.query.status;
     const interview_status = req.query.interview_status;
-    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
+    // Shift stored UTC timestamps to JST (+9 hours) so labels align with client-side Asia/Tokyo formatting
+    let labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d')";
     if (period === 'week') {
       // ISO week label like 2026-W05
-      labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
+      labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
     } else if (period === 'month') {
-      labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
+      labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m')";
     }
 
     const params = [];
@@ -193,9 +194,10 @@ router.get('/summary/timeseries/multi', async (req, res) => {
     const type = (req.query.type || 'status');
     if (!['status','interview_status'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
 
-    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
-    if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
-    else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
+    // Shift to JST (+9h) so multi-series labels match client JST display
+    let labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d')";
+    if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
+    else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m')";
 
     const rows = await query(
       `SELECT ${labelExpr} as label, ${type} as value, COUNT(*) as cnt FROM bids GROUP BY label, value ORDER BY MIN(bidded_date) ASC`
