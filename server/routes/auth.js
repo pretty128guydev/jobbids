@@ -10,6 +10,7 @@ router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   if (username === 'tooth' && password === PASSWORD) {
     req.session.user = 'tooth';
+    console.log('Auth login: session created', { id: req.sessionID, user: req.session.user });
     return res.json({ ok: true });
   }
   return res.status(401).json({ error: 'Invalid credentials' });

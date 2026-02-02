@@ -8,6 +8,12 @@ const session = require('express-session');
 dotenv.config();
 const app = express();
 
+// When running behind a proxy (Render) we should trust the first proxy
+// so Express correctly recognizes secure connections.
+if (process.env.NODE_ENV === 'production') {
+	app.set('trust proxy', 1);
+}
+
 // Allow localhost for dev and Netlify domain for production
 const allowedOrigins = [
 	'http://localhost:3000',
@@ -45,7 +51,8 @@ app.use(
 			httpOnly: true, 
 			sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', 
 			maxAge: 24 * 60 * 60 * 1000,
-			domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? undefined : undefined)
+			// Use explicit COOKIE_DOMAIN in production, otherwise set to the backend host
+			domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? 'jobbids-ncob.onrender.com' : undefined)
 		}
 	})
 );
