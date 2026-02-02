@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, CircularProgress, Select, MenuItem, FormControl, InputLabel, Table, TableHead, TableRow, TableCell, TableBody, Button } from '@mui/material';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import api from '../api';
 
 function Bars({ items, title }) {
@@ -58,6 +59,9 @@ export default function StatsPage() {
   const [seriesData, setSeriesData] = useState([]);
   const statuses = ['applied','refused','chatting','test task','fill the form'];
   const interviewStatuses = ['none','recruiter','tech','tech(live coding)','tech 2','final'];
+  const [multiRaw, setMultiRaw] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [chartKeys, setChartKeys] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -80,20 +84,36 @@ export default function StatsPage() {
     let mounted = true;
     (async () => {
       try {
-        const params = { period };
-        if (seriesStatus) {
-          if (metricType === 'status') params.status = seriesStatus;
-          else params.interview_status = seriesStatus;
-        }
-        const res = await api.get('/bids/summary/timeseries', { params });
+        const params = { period, type: metricType };
+        const res = await api.get('/bids/summary/timeseries/multi', { params });
         if (!mounted) return;
-        setSeriesData(res.data.data || []);
+        setMultiRaw(res.data.data || []);
       } catch (e) {
         // ignore for now
       }
     })();
     return () => { mounted = false; };
-  }, [period, seriesStatus]);
+  }, [period, metricType]);
+
+  // pivot multiRaw into chartData
+  useEffect(() => {
+    if (!multiRaw || !multiRaw.length) { setChartData([]); setChartKeys([]); return; }
+    const labels = Array.from(new Set(multiRaw.map(r=>r.label))).sort();
+    const valuesSet = Array.from(new Set(multiRaw.map(r=>r.value)));
+    const keys = seriesStatus ? [seriesStatus] : valuesSet;
+    const map = {};
+    for (const r of multiRaw) {
+      map[r.label] = map[r.label] || {};
+      map[r.label][r.value] = (map[r.label][r.value] || 0) + r.cnt;
+    }
+    const data = labels.map(label => {
+      const obj = { label };
+      for (const k of keys) obj[k] = map[label] && map[label][k] ? map[label][k] : 0;
+      return obj;
+    });
+    setChartData(data);
+    setChartKeys(keys);
+  }, [multiRaw, seriesStatus]);
 
   if (loading) return <div style={{ padding: 24, textAlign: 'center' }}><CircularProgress /></div>;
   if (error) return <div style={{ padding: 24 }}>{error}</div>;
@@ -103,16 +123,25 @@ export default function StatsPage() {
       <Typography variant="h5" sx={{ mb: 1 }}>Quick Summary</Typography>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 320 }}>
-          <Bars items={data.byStatus} title="Count per Status" />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 8 }}>
+            <FormControl size="small">
+              <InputLabel>Overview</InputLabel>
+              <Select value={metricType} label="Overview" onChange={(e)=>{ setMetricType(e.target.value); setSeriesStatus(''); }} style={{ minWidth: 200 }}>
+                <MenuItem value="status">Status</MenuItem>
+                <MenuItem value="interview_status">Interview Status</MenuItem>
+              </Select>
+            </FormControl>
+          </div>
+          <Bars items={metricType === 'status' ? data.byStatus : data.byInterviewStatus} title={metricType === 'status' ? 'Count per Status' : 'Count per Interview Status'} />
           <div style={{ padding: 12 }}>
             <Typography variant="subtitle1">Counts table</Typography>
             <Table size="small">
               <TableHead>
-                <TableRow><TableCell>Status</TableCell><TableCell>Count</TableCell></TableRow>
+                <TableRow><TableCell>{metricType === 'status' ? 'Status' : 'Interview Status'}</TableCell><TableCell>Count</TableCell></TableRow>
               </TableHead>
               <TableBody>
-                {data.byStatus.map(s => (
-                  <TableRow key={s.status}><TableCell>{s.status}</TableCell><TableCell>{s.cnt}</TableCell></TableRow>
+                {(metricType === 'status' ? data.byStatus : data.byInterviewStatus).map(s => (
+                  <TableRow key={metricType === 'status' ? s.status : s.interview_status}><TableCell>{metricType === 'status' ? s.status : s.interview_status}</TableCell><TableCell>{s.cnt}</TableCell></TableRow>
                 ))}
               </TableBody>
             </Table>
@@ -129,13 +158,13 @@ export default function StatsPage() {
                 <MenuItem value="month">Month</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small">
+            {/* <FormControl size="small">
               <InputLabel>Type</InputLabel>
               <Select value={metricType} label="Type" onChange={(e)=>{ setMetricType(e.target.value); setSeriesStatus(''); }} style={{ minWidth: 140 }}>
                 <MenuItem value="status">Status</MenuItem>
                 <MenuItem value="interview_status">Interview Status</MenuItem>
               </Select>
-            </FormControl>
+            </FormControl> */}
 
             <FormControl size="small">
               <InputLabel>Value</InputLabel>
@@ -151,14 +180,31 @@ export default function StatsPage() {
 
           <div style={{ padding: 12 }}>
             <Typography variant="subtitle1">Timeseries ({period})</Typography>
-            <TinyChart points={seriesData} />
+            <div style={{ width: '100%', height: 320 }}>
+              {chartData && chartData.length ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    {chartKeys.map((k, idx) => (
+                      <Line key={k} type="monotone" dataKey={k} stroke={["#1976d2","#d32f2f","#0288d1","#db7617","#7b1fa2","#2e7d32"][idx % 6]} dot={{ r: 3 }} />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (<div style={{ padding: 12 }}>No timeseries data</div>)}
+            </div>
             <div style={{ marginTop: 8 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow><TableCell>Label</TableCell><TableCell>Count</TableCell></TableRow>
                 </TableHead>
                 <TableBody>
-                  {seriesData.map(r => (<TableRow key={r.label}><TableCell>{r.label}</TableCell><TableCell>{r.cnt}</TableCell></TableRow>))}
+                  {chartData.map(r => (
+                    <TableRow key={r.label}><TableCell>{r.label}</TableCell><TableCell>{chartKeys.reduce((s,k)=>s+(r[k]||0),0)}</TableCell></TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
