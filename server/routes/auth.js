@@ -1,10 +1,14 @@
 const express = require('express');
+const dotenv = require('dotenv');
+dotenv.config();
 const router = express.Router();
 
-// simple hardcoded auth: username 'tooth' password 'tooth'
+// simple hardcoded auth: username 'tooth' and password default set by ADMIN_PASSWORD env or string below
+const PASSWORD = process.env.ADMIN_PASSWORD || 'Toothlessb!rth!s128';
+
 router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
-  if (username === 'tooth' && password === 'tooth') {
+  if (username === 'tooth' && password === PASSWORD) {
     req.session.user = 'tooth';
     return res.json({ ok: true });
   }

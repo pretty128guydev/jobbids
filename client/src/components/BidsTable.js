@@ -5,6 +5,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../api';
 import BidForm from './BidForm';
 
+const formatJST = (d) => {
+  if (!d) return '';
+  try {
+    return new Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Tokyo' }).format(new Date(d));
+  } catch (e) { return d; }
+};
+
 export default function BidsTable() {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -125,10 +132,10 @@ export default function BidsTable() {
                     const s = (row.status || 'applied').toLowerCase();
                     const label = s.split(' ').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
                     const colorMap = {
-                      'applied': '#1976d2',
+                      'applied': '#0faf3f',
                       'refused': '#d32f2f',
                       'chatting': '#0288d1',
-                      'test task': '#fbc02d',
+                      'test task': '#db7617',
                       'fill the form': '#7b1fa2'
                     };
                     const bg = colorMap[s] || '#455a64';
@@ -137,7 +144,7 @@ export default function BidsTable() {
                     );
                   })()}
                 </TableCell>
-                <TableCell><span className="muted">{row.bidded_date ? new Date(row.bidded_date).toLocaleString() : ''}</span></TableCell>
+                <TableCell><span className="muted">{row.bidded_date ? formatJST(row.bidded_date) : ''}</span></TableCell>
                 <TableCell>
                   {(() => {
                     const iv = (row.interview_status || 'none').toLowerCase();
@@ -151,10 +158,10 @@ export default function BidsTable() {
                     };
                     const ibg = interviewMap[iv] || '#616161';
                     if (iv === 'none') return (<span className="muted">None</span>);
-                    return (<Chip label={iv} size="small" sx={{ bgcolor: ibg, color: '#fff', fontWeight: 600 }} />);
+                    return (<Chip label={iv} size="small" sx={{ bgcolor: ibg, color: '#fff', fontWeight: 700 }} />);
                   })()}
                 </TableCell>
-                <TableCell>{row.interview_scheduled ? new Date(row.interview_scheduled).toLocaleString() : ''}</TableCell>
+                <TableCell>{row.interview_scheduled ? formatJST(row.interview_scheduled) : ''}</TableCell>
                 <TableCell>
                   {row.description ? (
                     <>

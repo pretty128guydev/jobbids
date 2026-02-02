@@ -8,7 +8,8 @@ export default function LoginDialog({ open, onClose }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     setError('');
     setLoading(true);
     try {
@@ -24,14 +25,16 @@ export default function LoginDialog({ open, onClose }) {
   return (
     <Dialog open={open} onClose={()=>{}} maxWidth="xs" fullWidth>
       <DialogTitle>Sign in</DialogTitle>
-      <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-        <TextField fullWidth label="Username" margin="dense" value={username} onChange={(e)=>setUsername(e.target.value)} />
-        <TextField fullWidth label="Password" margin="dense" type="password" value={password} onChange={(e)=>setPassword(e.target.value)} />
-      </DialogContent>
-      <DialogActions>
-        <Button disabled={loading} onClick={handleLogin} variant="contained">Sign in</Button>
-      </DialogActions>
+      <form onSubmit={handleLogin}>
+        <DialogContent>
+          {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+          <TextField autoFocus fullWidth label="Username" margin="dense" value={username} onChange={(e)=>setUsername(e.target.value)} />
+          <TextField fullWidth label="Password" margin="dense" type="password" value={password} onChange={(e)=>setPassword(e.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={loading} type="submit" variant="contained">Sign in</Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 }

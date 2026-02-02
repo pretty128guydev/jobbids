@@ -155,4 +155,34 @@ router.get('/summary/stats', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// Timeseries summary: /api/bids/summary/timeseries?period=day|week|month&status=...&interview_status=...
+router.get('/summary/timeseries', async (req, res) => {
+  try {
+    const period = (req.query.period || 'day').toLowerCase();
+    const status = req.query.status;
+    const interview_status = req.query.interview_status;
+    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
+    if (period === 'week') {
+      // ISO week label like 2026-W05
+      labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
+    } else if (period === 'month') {
+      labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
+    }
+
+    const params = [];
+    const wheres = [];
+    if (status) { wheres.push('status = ?'); params.push(status); }
+    if (interview_status) { wheres.push('interview_status = ?'); params.push(interview_status); }
+
+    const where = wheres.length ? ('WHERE ' + wheres.join(' AND ')) : '';
+
+    const rows = await query(
+      `SELECT ${labelExpr} as label, COUNT(*) as cnt FROM bids ${where} GROUP BY label ORDER BY MIN(bidded_date) ASC`,
+      params
+    );
+
+    res.json({ period, status: status || null, data: rows });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
 module.exports = router;
