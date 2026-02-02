@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Select, MenuItem, TableFooter, TablePagination, IconButton, Dialog, Snackbar, Alert, Chip } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Select, MenuItem, TableFooter, TablePagination, IconButton, Dialog, Snackbar, Alert, Chip, LinearProgress } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../api';
@@ -13,9 +13,12 @@ export default function BidsTable() {
   const [filters, setFilters] = useState({ company: '', status: '', interview_status: '' });
   const [editing, setEditing] = useState(null);
   const [openForm, setOpenForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
 
   async function fetchData(p = page, l = limit) {
     const params = { page: p + 1, limit: l, ...filters };
+    setLoading(true);
     try {
       const res = await api.get('/bids', { params });
       setData(res.data.data);
@@ -23,6 +26,8 @@ export default function BidsTable() {
     } catch (err) {
       const msg = err?.response?.data?.error || err.message || 'Failed to load bids';
       setError(msg);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -30,12 +35,16 @@ export default function BidsTable() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this bid?')) return;
+    setLoading(true);
     try {
       await api.delete(`/bids/${id}`);
-      fetchData();
+      setSuccess('Bid deleted');
+      await fetchData();
     } catch (err) {
       const msg = err?.response?.data?.error || err.message || 'Delete failed';
       setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,6 +68,7 @@ export default function BidsTable() {
           <Button variant="contained" onClick={()=>{setEditing(null); setOpenForm(true);}}>Add Bid</Button>
         </div>
       </div>
+      {loading && <LinearProgress />}
 
       <TableContainer component={Paper}>
         <Table>
@@ -138,11 +148,14 @@ export default function BidsTable() {
       <Dialog open={openForm} onClose={()=>setOpenForm(false)} maxWidth="sm" fullWidth>
         <BidForm
           initial={editing}
-          onClose={()=>{ setOpenForm(false); fetchData(); }}
+          onClose={(res)=>{ setOpenForm(false); fetchData(); if (res?.successMessage) setSuccess(res.successMessage); }}
         />
       </Dialog>
-      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+      <Snackbar anchorOrigin={{ vertical: 'top', horizontal: 'right' }} open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
         <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>{error}</Alert>
+      </Snackbar>
+      <Snackbar anchorOrigin={{ vertical: 'top', horizontal: 'right' }} open={!!success} autoHideDuration={4000} onClose={()=>setSuccess('')}>
+        <Alert onClose={()=>setSuccess('')} severity="success" sx={{ width: '100%' }}>{success}</Alert>
       </Snackbar>
     </>
   );

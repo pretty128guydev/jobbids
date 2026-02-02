@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Snackbar, Alert } from '@mui/material';
+import { DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Snackbar, Alert, Backdrop, CircularProgress } from '@mui/material';
 import api from '../api';
 
 export default function BidForm({ initial, onClose }) {
@@ -10,22 +10,50 @@ export default function BidForm({ initial, onClose }) {
   }); else setForm({ company_name: '', job_title: '', jd_link: '', status: 'Applied', interview_status: '', interview_scheduled: '' }); }, [initial]);
 
   const handleSubmit = async () => {
+    // client-side validation
+    if (!form.company_name || !form.job_title || !form.jd_link) {
+      setError('Company, Job Title and JD Link are required');
+      return;
+    }
+    // basic URL validation
+    try { new URL(form.jd_link); } catch (e) { setError('Invalid JD Link URL'); return; }
+
     const payload = { ...form };
     if (form.interview_scheduled === '') payload.interview_scheduled = null;
+
     try {
+      setLoading(true);
+      // when creating, check if company already exists
+      if (!initial) {
+        try {
+          const chk = await api.get('/bids/check/company', { params: { company: form.company_name } });
+          if (chk.data && chk.data.exists) {
+            setError('A bid for this company already exists');
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          // ignore check errors and proceed (server will validate)
+        }
+      }
+
       if (initial) {
         await api.put(`/bids/${initial.id}`, payload);
       } else {
         await api.post('/bids', payload);
       }
-      onClose();
+      const msg = initial ? 'Bid updated' : 'Bid added';
+      setLoading(false);
+      onClose && onClose({ successMessage: msg });
     } catch (err) {
       const msg = err?.response?.data?.error || err.message || 'Server error';
       setError(msg);
+      setLoading(false);
     }
   };
 
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const handleCloseError = () => setError('');
 
   return (
@@ -36,21 +64,33 @@ export default function BidForm({ initial, onClose }) {
         <TextField fullWidth label="Job Title" margin="dense" value={form.job_title} onChange={(e)=>setForm({...form, job_title: e.target.value})} />
         <TextField fullWidth label="JD Link" margin="dense" value={form.jd_link} onChange={(e)=>setForm({...form, jd_link: e.target.value})} />
         <TextField select fullWidth label="Status" margin="dense" value={form.status} onChange={(e)=>setForm({...form, status: e.target.value})}>
-          <MenuItem value="Applied">Applied</MenuItem>
-          <MenuItem value="Interview">Interview</MenuItem>
-          <MenuItem value="Offer">Offer</MenuItem>
-          <MenuItem value="Rejected">Rejected</MenuItem>
+          <MenuItem value="applied">Applied</MenuItem>
+          <MenuItem value="refused">Refused</MenuItem>
+          <MenuItem value="chatting">Chatting</MenuItem>
+          <MenuItem value="test task">Test Task</MenuItem>
+          <MenuItem value="fill the form">Fill The Form</MenuItem>
         </TextField>
-        <TextField fullWidth label="Interview Status" margin="dense" value={form.interview_status} onChange={(e)=>setForm({...form, interview_status: e.target.value})} />
+
+        <TextField select fullWidth label="Interview Status" margin="dense" value={form.interview_status} onChange={(e)=>setForm({...form, interview_status: e.target.value})}>
+          <MenuItem value="">None</MenuItem>
+          <MenuItem value="recruiter">recruiter</MenuItem>
+          <MenuItem value="tech">tech</MenuItem>
+          <MenuItem value="tech(live coding)">tech(live coding)</MenuItem>
+          <MenuItem value="tech 2">tech 2</MenuItem>
+          <MenuItem value="final">final</MenuItem>
+        </TextField>
         <TextField fullWidth label="Interview Scheduled" margin="dense" type="datetime-local" value={form.interview_scheduled} onChange={(e)=>setForm({...form, interview_scheduled: e.target.value})} InputLabelProps={{ shrink: true }} />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit}>{initial ? 'Save' : 'Add'}</Button>
+        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={loading}>{initial ? 'Save' : 'Add'}</Button>
       </DialogActions>
-      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+      <Snackbar anchorOrigin={{ vertical: 'top', horizontal: 'right' }} open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
         <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>{error}</Alert>
       </Snackbar>
+      <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </>
   );
 }

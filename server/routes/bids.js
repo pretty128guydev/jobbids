@@ -48,7 +48,13 @@ router.get('/check/company', async (req, res) => {
   try {
     const { company } = req.query;
     if (!company) return res.status(400).json({ error: 'company required' });
-    const rows = await query('SELECT COUNT(*) as cnt FROM bids WHERE company_name = ?', [company]);
+    // normalize input: collapse whitespace, trim, lowercase, remove spaces
+    const norm = company.replace(/\s+/g, ' ').trim().toLowerCase().replace(/ /g, '');
+    // normalize stored company_name using SQL: collapse whitespace and remove spaces, then lowercase
+    const rows = await query(
+      "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(TRIM(REGEXP_REPLACE(company_name, '\\s+', ' ')), ' ', '')) = ?",
+      [norm]
+    );
     res.json({ exists: rows[0].cnt > 0 });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -66,7 +72,15 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { company_name, job_title, jd_link = '', status = 'Applied', interview_status = '', interview_scheduled = null } = req.body;
-    if (!company_name || !job_title) return res.status(400).json({ error: 'company_name and job_title required' });
+    if (!company_name || !job_title || !jd_link) return res.status(400).json({ error: 'company_name, job_title and jd_link are required' });
+
+    // prevent duplicate company entries (normalize input and compare to normalized stored names)
+    const normInput = company_name.replace(/\s+/g, ' ').trim().toLowerCase().replace(/ /g, '');
+    const exists = await query(
+      "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(TRIM(REGEXP_REPLACE(company_name, '\\s+', ' ')), ' ', '')) = ?",
+      [normInput]
+    );
+    if (exists[0].cnt > 0) return res.status(400).json({ error: 'Company already has a bid' });
 
     const pool = db.getPool();
     const [result] = await pool.execute(
