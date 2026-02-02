@@ -53,7 +53,7 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ byStatus: [], byInterviewStatus: [] });
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState('week');
+  const [period, setPeriod] = useState('day');
   const [metricType, setMetricType] = useState('status');
   const [seriesStatus, setSeriesStatus] = useState('');
   const [seriesData, setSeriesData] = useState([]);

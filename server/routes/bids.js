@@ -185,4 +185,24 @@ router.get('/summary/timeseries', async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
+// Multi-series timeseries: returns counts per label per value (status or interview_status)
+// GET /api/bids/summary/timeseries/multi?period=day|week|month&type=status|interview_status
+router.get('/summary/timeseries/multi', async (req, res) => {
+  try {
+    const period = (req.query.period || 'day').toLowerCase();
+    const type = (req.query.type || 'status');
+    if (!['status','interview_status'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+
+    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
+    if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
+    else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
+
+    const rows = await query(
+      `SELECT ${labelExpr} as label, ${type} as value, COUNT(*) as cnt FROM bids GROUP BY label, value ORDER BY MIN(bidded_date) ASC`
+    );
+
+    res.json({ period, type, data: rows });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
 module.exports = router;
