@@ -77,7 +77,10 @@ const port = process.env.PORT || 4000;
 	try {
 		await db.init();
 		const bidsRouter = require('./routes/bids');
+		// Mount bids router at both /api/bids and /bids to support clients
+		// that use either base path (production build may request `/bids`).
 		app.use('/api/bids', requireAuth, bidsRouter);
+		app.use('/bids', requireAuth, bidsRouter);
 		app.listen(port, () => console.log(`Server listening on ${port}`));
 	} catch (err) {
 		console.error('Failed to initialize database:', err);
