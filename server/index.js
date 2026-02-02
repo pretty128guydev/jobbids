@@ -8,9 +8,25 @@ const session = require('express-session');
 dotenv.config();
 const app = express();
 
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
+// Allow localhost for dev and Netlify domain for production
+const allowedOrigins = [
+	'http://localhost:3000',
+	'http://localhost:3001',
+	process.env.CLIENT_ORIGIN,
+	'https://jobbids-prod.netlify.app' // Add your Netlify domain here
+].filter(Boolean);
 
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+app.use(cors({ 
+	origin: (origin, callback) => {
+		// Allow requests with no origin (like mobile apps or curl)
+		if (!origin || allowedOrigins.includes(origin)) {
+			callback(null, true);
+		} else {
+			callback(new Error('CORS not allowed'));
+		}
+	},
+	credentials: true 
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -20,7 +36,13 @@ app.use(
 		secret: process.env.SESSION_SECRET || 'change-me',
 		resave: false,
 		saveUninitialized: false,
-		cookie: { secure: false, httpOnly: true, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 }
+		cookie: { 
+			secure: process.env.NODE_ENV === 'production',
+			httpOnly: true, 
+			sameSite: 'lax', 
+			maxAge: 24 * 60 * 60 * 1000,
+			domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+		}
 	})
 );
 
