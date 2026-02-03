@@ -155,7 +155,7 @@ router.get('/summary/stats', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// Timeseries summary: /api/bids/summary/timeseries?period=day|week|month&status=...&interview_status=...
+// Timeseries summary: /api/bids/summary/timeseries?period=hour|day|week|month&status=...&interview_status=...
 router.get('/summary/timeseries', async (req, res) => {
   try {
     const period = (req.query.period || 'day').toLowerCase();
@@ -163,7 +163,9 @@ router.get('/summary/timeseries', async (req, res) => {
     const interview_status = req.query.interview_status;
     // Shift stored UTC timestamps to JST (+9 hours) so labels align with client-side Asia/Tokyo formatting
     let labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d')";
-    if (period === 'week') {
+    if (period === 'hour') {
+      labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d %H:00')";
+    } else if (period === 'week') {
       // ISO week label like 2026-W05
       labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
     } else if (period === 'month') {
@@ -187,7 +189,7 @@ router.get('/summary/timeseries', async (req, res) => {
 });
 
 // Multi-series timeseries: returns counts per label per value (status or interview_status)
-// GET /api/bids/summary/timeseries/multi?period=day|week|month&type=status|interview_status
+// GET /api/bids/summary/timeseries/multi?period=hour|day|week|month&type=status|interview_status
 router.get('/summary/timeseries/multi', async (req, res) => {
   try {
     const period = (req.query.period || 'day').toLowerCase();
@@ -196,7 +198,8 @@ router.get('/summary/timeseries/multi', async (req, res) => {
 
     // Shift to JST (+9h) so multi-series labels match client JST display
     let labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d')";
-    if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
+    if (period === 'hour') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d %H:00')";
+    else if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
     else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m')";
 
     const rows = await query(

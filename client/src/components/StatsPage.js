@@ -153,6 +153,7 @@ export default function StatsPage({ refreshSignal }) {
             <FormControl size="small">
               <InputLabel>Period</InputLabel>
               <Select value={period} label="Period" onChange={(e)=>setPeriod(e.target.value)}>
+                <MenuItem value="hour">Hour</MenuItem>
                 <MenuItem value="day">Day</MenuItem>
                 <MenuItem value="week">Week</MenuItem>
                 <MenuItem value="month">Month</MenuItem>
@@ -185,9 +186,15 @@ export default function StatsPage({ refreshSignal }) {
                 <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
+                    <XAxis dataKey="label" tickFormatter={(v) => {
+                      if (period === 'hour' && typeof v === 'string') {
+                        const parts = v.split(' ');
+                        return parts.length > 1 ? parts[1] : v;
+                      }
+                      return v;
+                    }} />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip labelFormatter={(label) => label} />
                     <Legend />
                     {chartKeys.map((k, idx) => (
                       <Line key={k} type="monotone" dataKey={k} stroke={["#1976d2","#d32f2f","#0288d1","#db7617","#7b1fa2","#2e7d32"][idx % 6]} dot={{ r: 3 }} />
@@ -203,7 +210,7 @@ export default function StatsPage({ refreshSignal }) {
                 </TableHead>
                 <TableBody>
                   {chartData.map(r => (
-                    <TableRow key={r.label}><TableCell>{r.label}</TableCell><TableCell>{chartKeys.reduce((s,k)=>s+(r[k]||0),0)}</TableCell></TableRow>
+                    <TableRow key={r.label}><TableCell>{period === 'hour' && typeof r.label === 'string' ? (r.label.split(' ')[1] || r.label) : r.label}</TableCell><TableCell>{chartKeys.reduce((s,k)=>s+(r[k]||0),0)}</TableCell></TableRow>
                   ))}
                 </TableBody>
               </Table>
