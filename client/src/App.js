@@ -37,7 +37,7 @@ export default function App() {
     <Box sx={{ width: '100%' }}>
       <AppBar position="static">
         <Toolbar>
-            <img src="/logo.png" alt="ToothlessBids" style={{ height: 48, marginRight: 12 }} />
+            <img src="/logo.png" alt="ToothlessBids" style={{ height: 75, marginRight: 12 }} />
           <Typography variant="h6" component="div">ToothlessBids</Typography>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             {authed && (
