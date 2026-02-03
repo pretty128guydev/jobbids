@@ -51,7 +51,7 @@ export default function App() {
                 <Button color={view === 'stats' ? 'secondary' : 'inherit'} onClick={()=>setView('stats')}>Stats</Button>
               </>
             )}
-            {authed ? <Button color="inherit" onClick={handleLogout}>Logout</Button> : null}
+            {authed ? <Button color="inherit" onClick={handleLogout}>Logout</Button> : <Button color="inherit" onClick={() => setLoginOpen(true)}>Login</Button>}
           </div>
         </Toolbar>
       </AppBar>
