@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Paper, AppBar, Toolbar, Box, Button } from '@mui/material';
+import { Container, Typography, Paper, AppBar, Toolbar, Box, Button, IconButton } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import BidsTable from './components/BidsTable';
 import StatsPage from './components/StatsPage';
 import LoginDialog from './components/LoginDialog';
@@ -9,6 +10,7 @@ export default function App() {
   const [authed, setAuthed] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [view, setView] = useState('bids');
+  const [refreshSignal, setRefreshSignal] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -35,9 +37,14 @@ export default function App() {
     <Box sx={{ width: '100%' }}>
       <AppBar position="static">
         <Toolbar>
-          <img src="/logo-jobbids.svg" alt="JobBids" style={{ height: 34, marginRight: 12 }} />
-          <Typography variant="h6" component="div">JobBids</Typography>
+            <img src="/logo.png" alt="ToothlessBids" style={{ height: 48, marginRight: 12 }} />
+          <Typography variant="h6" component="div">ToothlessBids</Typography>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            {authed && (
+              <IconButton color="inherit" onClick={() => setRefreshSignal(s => s + 1)} title="Refresh data">
+                <RefreshIcon />
+              </IconButton>
+            )}
             {authed && (
               <>
                 <Button color={view === 'bids' ? 'secondary' : 'inherit'} onClick={()=>setView('bids')}>Bids</Button>
@@ -52,7 +59,7 @@ export default function App() {
       <Container maxWidth={false} style={{ marginTop: 16, paddingLeft: 24, paddingRight: 24 }}>
         <Paper style={{ padding: 16 }} elevation={2}>
           {authed ? (
-            view === 'bids' ? <BidsTable /> : <StatsPage />
+            view === 'bids' ? <BidsTable refreshSignal={refreshSignal} /> : <StatsPage refreshSignal={refreshSignal} />
           ) : (
             <div style={{ padding: 16 }}>Please sign in to view job bids.</div>
           )}

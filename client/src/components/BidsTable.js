@@ -12,7 +12,7 @@ const formatJST = (d) => {
   } catch (e) { return d; }
 };
 
-export default function BidsTable() {
+export default function BidsTable({ refreshSignal }) {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -46,6 +46,11 @@ export default function BidsTable() {
   }
 
   useEffect(() => { fetchData(0, limit); setPage(0); }, [filters, limit]);
+
+  // refetch when parent triggers refresh
+  useEffect(() => {
+    if (refreshSignal !== undefined) fetchData(page, limit);
+  }, [refreshSignal]);
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this bid?')) return;

@@ -49,7 +49,7 @@ function TinyChart({ points }) {
   );
 }
 
-export default function StatsPage() {
+export default function StatsPage({ refreshSignal }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ byStatus: [], byInterviewStatus: [] });
   const [error, setError] = useState('');
@@ -78,7 +78,7 @@ export default function StatsPage() {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [refreshSignal]);
 
   useEffect(() => {
     let mounted = true;
@@ -93,7 +93,7 @@ export default function StatsPage() {
       }
     })();
     return () => { mounted = false; };
-  }, [period, metricType]);
+  }, [period, metricType, refreshSignal]);
 
   // pivot multiRaw into chartData
   useEffect(() => {
