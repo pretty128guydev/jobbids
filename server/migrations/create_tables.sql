@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS bids (
   job_title VARCHAR(255) NOT NULL,
   jd_link VARCHAR(1024) DEFAULT '',
   description TEXT DEFAULT '',
-  status VARCHAR(50) DEFAULT 'Applied',
+  status VARCHAR(50) DEFAULT 'applied',
   interview_status VARCHAR(100) DEFAULT '',
   bidded_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   interview_scheduled DATETIME NULL,
