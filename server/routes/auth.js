@@ -7,25 +7,18 @@ const router = express.Router();
 const PASSWORD = process.env.ADMIN_PASSWORD || 'Toothlessb!rth!s128';
 
 router.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
-  if (username === 'tooth' && password === PASSWORD) {
-    req.session.user = 'tooth';
-    console.log('Auth login: session created', { id: req.sessionID, user: req.session.user });
-    return res.json({ ok: true });
-  }
-  return res.status(401).json({ error: 'Invalid credentials' });
+  // Authentication removed — accept all login attempts
+  return res.json({ ok: true });
 });
 
 router.post('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie('jobbids.sid');
-    res.json({ ok: true });
-  });
+  // No-op logout; simply return ok
+  return res.json({ ok: true });
 });
 
 router.get('/status', (req, res) => {
-  if (req.session && req.session.user === 'tooth') return res.json({ authenticated: true, user: 'tooth' });
-  return res.json({ authenticated: false });
+  // Always report authenticated so client flows that check status proceed
+  return res.json({ authenticated: true, user: 'public' });
 });
 
 module.exports = router;

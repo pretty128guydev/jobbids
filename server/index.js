@@ -67,8 +67,8 @@ app.use('/auth', authRouter);
 
 // protect API routes
 function requireAuth(req, res, next) {
-	if (req.session && req.session.user === 'tooth') return next();
-	return res.status(401).json({ error: 'Unauthorized' });
+	// Authorization disabled — allow all requests
+	return next();
 }
 
 const port = process.env.PORT || 4000;
