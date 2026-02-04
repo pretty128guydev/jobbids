@@ -115,6 +115,22 @@ export default function StatsPage({ refreshSignal }) {
     setChartKeys(keys);
   }, [multiRaw, seriesStatus]);
 
+  const statusColorMap = {
+    'applied': '#0faf3f',
+    'refused': '#d32f2f',
+    'chatting': '#0288d1',
+    'test task': '#db7617',
+    'fill the form': '#7b1fa2'
+  };
+  const interviewColorMap = {
+    'none': '#616161',
+    'recruiter': '#2e7d32',
+    'tech': '#f9a825',
+    'tech 2': '#f9a825',
+    'tech(live coding)': '#7e57c2',
+    'final': '#d81b60'
+  };
+
   if (loading) return <div style={{ padding: 24, textAlign: 'center' }}><CircularProgress /></div>;
   if (error) return <div style={{ padding: 24 }}>{error}</div>;
 
@@ -196,9 +212,13 @@ export default function StatsPage({ refreshSignal }) {
                     <YAxis />
                     <Tooltip labelFormatter={(label) => label} />
                     <Legend />
-                    {chartKeys.map((k, idx) => (
-                      <Line key={k} type="monotone" dataKey={k} stroke={["#1976d2","#d32f2f","#0288d1","#db7617","#7b1fa2","#2e7d32"][idx % 6]} dot={{ r: 3 }} />
-                    ))}
+                    {chartKeys.map((k, idx) => {
+                      const keyLower = (k || '').toLowerCase();
+                      const stroke = metricType === 'status'
+                        ? (statusColorMap[keyLower] || '#455a64')
+                        : (interviewColorMap[keyLower] || '#616161');
+                      return <Line key={k} type="monotone" dataKey={k} stroke={stroke} dot={{ r: 3 }} />;
+                    })}
                   </LineChart>
                 </ResponsiveContainer>
               ) : (<div style={{ padding: 12 }}>No timeseries data</div>)}
