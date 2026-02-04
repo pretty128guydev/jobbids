@@ -59,6 +59,14 @@ router.get('/check/company', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// DELETE /api/bids/all - remove all bids
+router.delete('/all', async (req, res) => {
+  try {
+    await query('DELETE FROM bids');
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
 // GET /api/bids/:id
 router.get('/:id', async (req, res) => {
   try {

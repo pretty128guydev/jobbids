@@ -67,6 +67,22 @@ export default function BidsTable({ refreshSignal }) {
     }
   };
 
+  const handleClearAll = async () => {
+    if (!confirm('Remove ALL bids? This cannot be undone.')) return;
+    setLoading(true);
+    try {
+      await api.delete('/bids/all');
+      setSuccess('All bids removed');
+      setPage(0);
+      await fetchData(0, limit);
+    } catch (err) {
+      const msg = err?.response?.data?.error || err.message || 'Remove all failed';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [error, setError] = useState('');
   const handleCloseError = () => setError('');
 
@@ -91,7 +107,8 @@ export default function BidsTable({ refreshSignal }) {
           <MenuItem value="tech 2">tech 2</MenuItem>
           <MenuItem value="final">final</MenuItem>
         </Select>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <Button variant="outlined" color="error" disabled={loading || total === 0} onClick={handleClearAll}>Remove All</Button>
           <Button variant="contained" onClick={()=>{setEditing(null); setOpenForm(true);}}>Add Bid</Button>
         </div>
       </div>
