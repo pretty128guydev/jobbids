@@ -12,6 +12,12 @@ const formatJST = (d) => {
   } catch (e) { return d; }
 };
 
+const truncateText = (text, max = 18) => {
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return `${text.slice(0, max)}...`;
+};
+
 export default function BidsTable({ refreshSignal }) {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -132,8 +138,8 @@ export default function BidsTable({ refreshSignal }) {
           <TableBody>
             {data.map(row => (
               <TableRow key={row.id}>
-                <TableCell><strong>{row.company_name}</strong></TableCell>
-                <TableCell>{row.job_title}</TableCell>
+                <TableCell title={row.company_name || ''}><strong>{truncateText(row.company_name, 18)}</strong></TableCell>
+                <TableCell title={row.job_title || ''}>{truncateText(row.job_title, 22)}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>
                   {row.jd_link ? (
                     <Chip
