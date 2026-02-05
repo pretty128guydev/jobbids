@@ -67,6 +67,16 @@ async function ensureTables() {
       );
     }
   }
+
+  // normalize stored status and interview_status values
+  await pool.query("UPDATE bids SET status = LOWER(TRIM(status))");
+  await pool.query("UPDATE bids SET interview_status = LOWER(TRIM(interview_status))");
+  await pool.query(
+    "UPDATE bids SET status = 'applied' WHERE status IS NULL OR TRIM(status) = '' OR status NOT IN ('applied','refused','chatting','test task','fill the form')"
+  );
+  await pool.query(
+    "UPDATE bids SET interview_status = 'none' WHERE interview_status IS NULL OR TRIM(interview_status) = '' OR interview_status NOT IN ('recruiter','tech','tech(live coding)','tech 2','final','none')"
+  );
 }
 
 function getPool() {

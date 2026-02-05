@@ -157,8 +157,14 @@ router.delete('/:id', async (req, res) => {
 // Summary /analysis endpoint
 router.get('/summary/stats', async (req, res) => {
   try {
-    const statusRows = await query('SELECT status, COUNT(*) as cnt FROM bids GROUP BY status', []);
-    const interviewRows = await query('SELECT interview_status, COUNT(*) as cnt FROM bids GROUP BY interview_status', []);
+    const statusRows = await query(
+      "SELECT COALESCE(NULLIF(LOWER(TRIM(status)), ''), 'applied') as status, COUNT(*) as cnt FROM bids GROUP BY status",
+      []
+    );
+    const interviewRows = await query(
+      "SELECT COALESCE(NULLIF(LOWER(TRIM(interview_status)), ''), 'none') as interview_status, COUNT(*) as cnt FROM bids GROUP BY interview_status",
+      []
+    );
     res.json({ byStatus: statusRows, byInterviewStatus: interviewRows });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -182,8 +188,14 @@ router.get('/summary/timeseries', async (req, res) => {
 
     const params = [];
     const wheres = [];
-    if (status) { wheres.push('status = ?'); params.push(status); }
-    if (interview_status) { wheres.push('interview_status = ?'); params.push(interview_status); }
+    if (status) {
+      wheres.push("COALESCE(NULLIF(LOWER(TRIM(status)), ''), 'applied') = ?");
+      params.push(('' + status).toLowerCase().trim());
+    }
+    if (interview_status) {
+      wheres.push("COALESCE(NULLIF(LOWER(TRIM(interview_status)), ''), 'none') = ?");
+      params.push(('' + interview_status).toLowerCase().trim());
+    }
 
     const where = wheres.length ? ('WHERE ' + wheres.join(' AND ')) : '';
 
@@ -210,8 +222,12 @@ router.get('/summary/timeseries/multi', async (req, res) => {
     else if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
     else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m')";
 
+    const valueExpr = type === 'status'
+      ? "COALESCE(NULLIF(LOWER(TRIM(status)), ''), 'applied')"
+      : "COALESCE(NULLIF(LOWER(TRIM(interview_status)), ''), 'none')";
+
     const rows = await query(
-      `SELECT ${labelExpr} as label, ${type} as value, COUNT(*) as cnt FROM bids GROUP BY label, value ORDER BY MIN(bidded_date) ASC`
+      `SELECT ${labelExpr} as label, ${valueExpr} as value, COUNT(*) as cnt FROM bids GROUP BY label, value ORDER BY MIN(bidded_date) ASC`
     );
 
     res.json({ period, type, data: rows });
