@@ -50,15 +50,17 @@ function TinyChart({ points }) {
 }
 
 export default function StatsPage({ refreshSignal }) {
+  const totalSeriesKey = '__total__';
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ byStatus: [], byInterviewStatus: [] });
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState('hour');
+  const [period, setPeriod] = useState('day');
   const [metricType, setMetricType] = useState('status');
-  const [seriesStatus, setSeriesStatus] = useState('');
+  const [seriesStatus, setSeriesStatus] = useState(totalSeriesKey);
   const [seriesData, setSeriesData] = useState([]);
   const statuses = ['applied','refused','chatting','test task','fill the form'];
-  const interviewStatuses = ['none','recruiter','tech','tech(live coding)','tech 2','final'];
+  const interviewStatuses = ['recruiter','tech','tech(live coding)','tech 2','final'];
+  const allowedInterviewStatusSet = new Set(interviewStatuses.map(s => s.toLowerCase()));
   const [multiRaw, setMultiRaw] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [chartKeys, setChartKeys] = useState([]);
@@ -95,16 +97,31 @@ export default function StatsPage({ refreshSignal }) {
     return () => { mounted = false; };
   }, [period, metricType, refreshSignal]);
 
+  useEffect(() => {
+    if (metricType === 'interview_status') {
+      setPeriod('day');
+      setSeriesStatus('');
+    } else {
+      setSeriesStatus(totalSeriesKey);
+    }
+  }, [metricType]);
+
   // pivot multiRaw into chartData
   useEffect(() => {
     if (!multiRaw || !multiRaw.length) { setChartData([]); setChartKeys([]); return; }
-    const labels = Array.from(new Set(multiRaw.map(r=>r.label))).sort();
-    const valuesSet = Array.from(new Set(multiRaw.map(r=>r.value)));
-    const keys = seriesStatus ? [seriesStatus] : valuesSet;
+    const filteredMultiRaw = metricType === 'interview_status'
+      ? multiRaw.filter(r => allowedInterviewStatusSet.has(String(r.value || '').toLowerCase()))
+      : multiRaw;
+    const labels = Array.from(new Set(filteredMultiRaw.map(r=>r.label))).sort();
+    const valuesSet = Array.from(new Set(filteredMultiRaw.map(r=>r.value)));
+    const keys = metricType === 'status'
+      ? (seriesStatus === totalSeriesKey ? ['Total'] : (seriesStatus ? [seriesStatus] : valuesSet))
+      : (seriesStatus ? [seriesStatus] : valuesSet);
     const map = {};
-    for (const r of multiRaw) {
+    for (const r of filteredMultiRaw) {
       map[r.label] = map[r.label] || {};
       map[r.label][r.value] = (map[r.label][r.value] || 0) + r.cnt;
+      map[r.label].Total = (map[r.label].Total || 0) + r.cnt;
     }
     const data = labels.map(label => {
       const obj = { label };
@@ -113,7 +130,7 @@ export default function StatsPage({ refreshSignal }) {
     });
     setChartData(data);
     setChartKeys(keys);
-  }, [multiRaw, seriesStatus]);
+  }, [multiRaw, seriesStatus, metricType]);
 
   const statusColorMap = {
     'applied': '#0faf3f',
@@ -130,6 +147,7 @@ export default function StatsPage({ refreshSignal }) {
     'tech(live coding)': '#7e57c2',
     'final': '#d81b60'
   };
+  const totalSeriesColor = '#a794eb';
 
   if (loading) return <div style={{ padding: 24, textAlign: 'center' }}><CircularProgress /></div>;
   if (error) return <div style={{ padding: 24 }}>{error}</div>;
@@ -142,13 +160,22 @@ export default function StatsPage({ refreshSignal }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 8 }}>
             <FormControl size="small">
               <InputLabel>Overview</InputLabel>
-              <Select value={metricType} label="Overview" onChange={(e)=>{ setMetricType(e.target.value); setSeriesStatus(''); }} style={{ minWidth: 200 }}>
+              <Select
+                value={metricType}
+                label="Overview"
+                onChange={(e)=>{
+                  const nextType = e.target.value;
+                  setMetricType(nextType);
+                  setSeriesStatus(nextType === 'status' ? totalSeriesKey : '');
+                }}
+                style={{ minWidth: 200 }}
+              >
                 <MenuItem value="status">Status</MenuItem>
                 <MenuItem value="interview_status">Interview Status</MenuItem>
               </Select>
             </FormControl>
           </div>
-          <Bars items={metricType === 'status' ? data.byStatus : data.byInterviewStatus} title={metricType === 'status' ? 'Count per Status' : 'Count per Interview Status'} />
+          <Bars items={metricType === 'status' ? data.byStatus : data.byInterviewStatus.filter(s => allowedInterviewStatusSet.has(String(s.interview_status || '').toLowerCase()))} title={metricType === 'status' ? 'Count per Status' : 'Count per Interview Status'} />
           <div style={{ padding: 12 }}>
             <Typography variant="subtitle1">Counts table</Typography>
             <Table size="small">
@@ -156,7 +183,7 @@ export default function StatsPage({ refreshSignal }) {
                 <TableRow><TableCell>{metricType === 'status' ? 'Status' : 'Interview Status'}</TableCell><TableCell>Count</TableCell></TableRow>
               </TableHead>
               <TableBody>
-                {(metricType === 'status' ? data.byStatus : data.byInterviewStatus).map(s => (
+                {(metricType === 'status' ? data.byStatus : data.byInterviewStatus.filter(s => allowedInterviewStatusSet.has(String(s.interview_status || '').toLowerCase()))).map(s => (
                   <TableRow key={metricType === 'status' ? s.status : s.interview_status}><TableCell>{metricType === 'status' ? s.status : s.interview_status}</TableCell><TableCell>{s.cnt}</TableCell></TableRow>
                 ))}
               </TableBody>
@@ -187,7 +214,12 @@ export default function StatsPage({ refreshSignal }) {
               <InputLabel>Value</InputLabel>
               <Select value={seriesStatus} label="Value" onChange={(e)=>setSeriesStatus(e.target.value)} style={{ minWidth: 200 }}>
                 <MenuItem value="">All</MenuItem>
-                {(metricType === 'status' ? data.byStatus.map(s=>s.status) : data.byInterviewStatus.map(s=>s.interview_status)).map(v => (
+                {metricType === 'status' && (
+                  <MenuItem value={totalSeriesKey}>Total</MenuItem>
+                )}
+                {(metricType === 'status' ? data.byStatus.map(s=>s.status) : data.byInterviewStatus
+                  .filter(s => allowedInterviewStatusSet.has(String(s.interview_status || '').toLowerCase()))
+                  .map(s=>s.interview_status)).map(v => (
                   <MenuItem key={v} value={v}>{v}</MenuItem>
                 ))}
               </Select>
@@ -215,7 +247,7 @@ export default function StatsPage({ refreshSignal }) {
                     {chartKeys.map((k, idx) => {
                       const keyLower = (k || '').toLowerCase();
                       const stroke = metricType === 'status'
-                        ? (statusColorMap[keyLower] || '#455a64')
+                        ? (keyLower === 'total' ? totalSeriesColor : (statusColorMap[keyLower] || '#455a64'))
                         : (interviewColorMap[keyLower] || '#616161');
                       return <Line key={k} type="monotone" dataKey={k} stroke={stroke} dot={{ r: 3 }} />;
                     })}
