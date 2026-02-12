@@ -52,7 +52,7 @@ router.get('/check/company', async (req, res) => {
     const norm = company.replace(/\s+/g, ' ').trim().toLowerCase().replace(/ /g, '');
     // normalize stored company_name using SQL: collapse whitespace and remove spaces, then lowercase
     const rows = await query(
-      "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(TRIM(REGEXP_REPLACE(company_name, '\\s+', ' ')), ' ', '')) = ?",
+      "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(REPLACE(REPLACE(REPLACE(company_name, '\\r', ''), '\\n', ''), '\\t', ''), ' ', '')) = ?",
       [norm]
     );
     res.json({ exists: rows[0].cnt > 0 });
@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
     // prevent duplicate company entries (normalize input and compare to normalized stored names)
     const normInput = company_name.replace(/\s+/g, ' ').trim().toLowerCase().replace(/ /g, '');
     const exists = await query(
-      "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(TRIM(REGEXP_REPLACE(company_name, '\\s+', ' ')), ' ', '')) = ?",
+      "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(REPLACE(REPLACE(REPLACE(company_name, '\\r', ''), '\\n', ''), '\\t', ''), ' ', '')) = ?",
       [normInput]
     );
     if (exists[0].cnt > 0) return res.status(400).json({ error: 'Company already has a bid' });
@@ -123,7 +123,7 @@ router.put('/:id', async (req, res) => {
     if (company_name !== undefined) {
       const normInput = company_name.replace(/\s+/g, ' ').trim().toLowerCase().replace(/ /g, '');
       const rows = await query(
-        "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(TRIM(REGEXP_REPLACE(company_name, '\\s+', ' ')), ' ', '')) = ? AND id <> ?",
+        "SELECT COUNT(*) as cnt FROM bids WHERE LOWER(REPLACE(REPLACE(REPLACE(REPLACE(company_name, '\\r', ''), '\\n', ''), '\\t', ''), ' ', '')) = ? AND id <> ?",
         [normInput, req.params.id]
       );
       if (rows[0].cnt > 0) return res.status(400).json({ error: 'Another bid for this company exists' });
