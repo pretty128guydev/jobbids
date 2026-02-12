@@ -18,6 +18,11 @@ async function init() {
 
   pool = mysql.createPool({ host, user, password, database, port, waitForConnections: true, connectionLimit: 10, queueLimit: 0 });
 
+  // Force JST for all session-level time calculations (NOW(), CURRENT_TIMESTAMP, etc.)
+  pool.on('connection', (conn) => {
+    conn.query("SET time_zone = '+09:00'");
+  });
+
   // ensure tables and columns exist
   await ensureTables();
 }

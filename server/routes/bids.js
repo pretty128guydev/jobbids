@@ -175,15 +175,15 @@ router.get('/summary/timeseries', async (req, res) => {
     const period = (req.query.period || 'day').toLowerCase();
     const status = req.query.status;
     const interview_status = req.query.interview_status;
-    // Shift stored UTC timestamps to JST (+9 hours) so labels align with client-side Asia/Tokyo formatting
-    let labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d')";
+    // DB session uses JST, so format directly
+    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
     if (period === 'hour') {
-      labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d %H:00')";
+      labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d %H:00')";
     } else if (period === 'week') {
       // ISO week label like 2026-W05
-      labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
+      labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
     } else if (period === 'month') {
-      labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m')";
+      labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
     }
 
     const params = [];
@@ -216,11 +216,11 @@ router.get('/summary/timeseries/multi', async (req, res) => {
     const type = (req.query.type || 'status');
     if (!['status','interview_status'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
 
-    // Shift to JST (+9h) so multi-series labels match client JST display
-    let labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d')";
-    if (period === 'hour') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m-%d %H:00')";
-    else if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%x-W%v')";
-    else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date + INTERVAL 9 HOUR, '%Y-%m')";
+    // DB session uses JST, so format directly
+    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
+    if (period === 'hour') labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d %H:00')";
+    else if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
+    else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
 
     const valueExpr = type === 'status'
       ? "COALESCE(NULLIF(LOWER(TRIM(status)), ''), 'applied')"
