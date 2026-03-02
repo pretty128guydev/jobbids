@@ -23,7 +23,7 @@ export default function BidsTable({ refreshSignal }) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(10);
-  const [filters, setFilters] = useState({ company: '', status: '', interview_status: '' });
+  const [filters, setFilters] = useState({ company: '', status: '', interview_status: '', date_from: '', date_to: '' });
   const [editing, setEditing] = useState(null);
   const [openForm, setOpenForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -91,12 +91,32 @@ export default function BidsTable({ refreshSignal }) {
 
   const [error, setError] = useState('');
   const handleCloseError = () => setError('');
+  const resetFilters = () => {
+    setFilters({ company: '', status: '', interview_status: '', date_from: '', date_to: '' });
+  };
 
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <TextField label="Company" size="small" value={filters.company} onChange={(e)=>setFilters({...filters, company: e.target.value})} />
         <TextField label="Job Title" size="small" value={filters.job_title||''} onChange={(e)=>setFilters({...filters, job_title: e.target.value})} />
+        <TextField
+          label="From"
+          type="date"
+          size="small"
+          value={filters.date_from}
+          onChange={(e)=>setFilters({...filters, date_from: e.target.value})}
+          InputLabelProps={{ shrink: true }}
+        />
+        <TextField
+          label="To"
+          type="date"
+          size="small"
+          value={filters.date_to}
+          onChange={(e)=>setFilters({...filters, date_to: e.target.value})}
+          InputLabelProps={{ shrink: true }}
+        />
+        <Button variant="outlined" onClick={resetFilters}>Reset</Button>
         <Select value={filters.status} displayEmpty onChange={(e)=>setFilters({...filters, status: e.target.value})} size="small">
           <MenuItem value="">All Status</MenuItem>
           <MenuItem value="applied">Applied</MenuItem>

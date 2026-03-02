@@ -13,7 +13,7 @@ async function query(sql, params) {
 // GET /api/bids - list with filters + pagination
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, limit = 10, company, status, interview_status, job_title } = req.query;
+    const { page = 1, limit = 10, company, status, interview_status, job_title, date_from, date_to } = req.query;
     const offset = (page - 1) * limit;
     const where = [];
     const params = [];
@@ -22,6 +22,8 @@ router.get('/', async (req, res) => {
     if (job_title) { where.push('job_title LIKE ?'); params.push(`%${job_title}%`); }
     if (status) { where.push('status = ?'); params.push(status); }
     if (interview_status) { where.push('interview_status = ?'); params.push(interview_status); }
+    if (date_from) { where.push('DATE(bidded_date) >= ?'); params.push(date_from); }
+    if (date_to) { where.push('DATE(bidded_date) <= ?'); params.push(date_to); }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const totalRows = await query(`SELECT COUNT(*) as cnt FROM bids ${whereSql}`, params);
@@ -175,15 +177,19 @@ router.get('/summary/timeseries', async (req, res) => {
     const period = (req.query.period || 'day').toLowerCase();
     const status = req.query.status;
     const interview_status = req.query.interview_status;
-    // DB session uses JST, so format directly
-    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
+    const isInterviewSeries = Boolean(interview_status);
+    // Convert Moscow time to JST (+6 hours) when grouping by interview schedule
+    const baseDateExpr = isInterviewSeries
+      ? "DATE_ADD(interview_scheduled, INTERVAL 6 HOUR)"
+      : "bidded_date";
+    let labelExpr = `DATE_FORMAT(${baseDateExpr}, '%Y-%m-%d')`;
     if (period === 'hour') {
-      labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d %H:00')";
+      labelExpr = `DATE_FORMAT(${baseDateExpr}, '%Y-%m-%d %H:00')`;
     } else if (period === 'week') {
       // ISO week label like 2026-W05
-      labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
+      labelExpr = `DATE_FORMAT(${baseDateExpr}, '%x-W%v')`;
     } else if (period === 'month') {
-      labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
+      labelExpr = `DATE_FORMAT(${baseDateExpr}, '%Y-%m')`;
     }
 
     const params = [];
@@ -196,11 +202,14 @@ router.get('/summary/timeseries', async (req, res) => {
       wheres.push("COALESCE(NULLIF(LOWER(TRIM(interview_status)), ''), 'none') = ?");
       params.push(('' + interview_status).toLowerCase().trim());
     }
+    if (isInterviewSeries) {
+      wheres.push('interview_scheduled IS NOT NULL');
+    }
 
     const where = wheres.length ? ('WHERE ' + wheres.join(' AND ')) : '';
 
     const rows = await query(
-      `SELECT ${labelExpr} as label, COUNT(*) as cnt FROM bids ${where} GROUP BY label ORDER BY MIN(bidded_date) ASC`,
+      `SELECT ${labelExpr} as label, COUNT(*) as cnt FROM bids ${where} GROUP BY label ORDER BY MIN(${baseDateExpr}) ASC`,
       params
     );
 
@@ -216,18 +225,23 @@ router.get('/summary/timeseries/multi', async (req, res) => {
     const type = (req.query.type || 'status');
     if (!['status','interview_status'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
 
-    // DB session uses JST, so format directly
-    let labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d')";
-    if (period === 'hour') labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m-%d %H:00')";
-    else if (period === 'week') labelExpr = "DATE_FORMAT(bidded_date, '%x-W%v')";
-    else if (period === 'month') labelExpr = "DATE_FORMAT(bidded_date, '%Y-%m')";
+    const isInterviewSeries = type === 'interview_status';
+    // Convert Moscow time to JST (+6 hours) when grouping by interview schedule
+    const baseDateExpr = isInterviewSeries
+      ? "DATE_ADD(interview_scheduled, INTERVAL 6 HOUR)"
+      : "bidded_date";
+    let labelExpr = `DATE_FORMAT(${baseDateExpr}, '%Y-%m-%d')`;
+    if (period === 'hour') labelExpr = `DATE_FORMAT(${baseDateExpr}, '%Y-%m-%d %H:00')`;
+    else if (period === 'week') labelExpr = `DATE_FORMAT(${baseDateExpr}, '%x-W%v')`;
+    else if (period === 'month') labelExpr = `DATE_FORMAT(${baseDateExpr}, '%Y-%m')`;
 
     const valueExpr = type === 'status'
       ? "COALESCE(NULLIF(LOWER(TRIM(status)), ''), 'applied')"
       : "COALESCE(NULLIF(LOWER(TRIM(interview_status)), ''), 'none')";
 
+    const where = isInterviewSeries ? 'WHERE interview_scheduled IS NOT NULL' : '';
     const rows = await query(
-      `SELECT ${labelExpr} as label, ${valueExpr} as value, COUNT(*) as cnt FROM bids GROUP BY label, value ORDER BY MIN(bidded_date) ASC`
+      `SELECT ${labelExpr} as label, ${valueExpr} as value, COUNT(*) as cnt FROM bids ${where} GROUP BY label, value ORDER BY MIN(${baseDateExpr}) ASC`
     );
 
     res.json({ period, type, data: rows });
