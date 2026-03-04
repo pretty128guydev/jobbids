@@ -116,7 +116,6 @@ export default function BidsTable({ refreshSignal }) {
           onChange={(e)=>setFilters({...filters, date_to: e.target.value})}
           InputLabelProps={{ shrink: true }}
         />
-        <Button variant="outlined" onClick={resetFilters}>Reset</Button>
         <Select value={filters.status} displayEmpty onChange={(e)=>setFilters({...filters, status: e.target.value})} size="small">
           <MenuItem value="">All Status</MenuItem>
           <MenuItem value="applied">Applied</MenuItem>
@@ -134,6 +133,7 @@ export default function BidsTable({ refreshSignal }) {
           <MenuItem value="final">final</MenuItem>
         </Select>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <Button variant="outlined" onClick={resetFilters}>Reset Filters</Button>
           <Button variant="outlined" color="error" disabled={loading || total === 0} onClick={handleClearAll}>Remove All</Button>
           <Button variant="contained" onClick={()=>{setEditing(null); setOpenForm(true);}}>Add Bid</Button>
         </div>
